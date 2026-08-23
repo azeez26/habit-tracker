@@ -1,9 +1,10 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors"
-import connectDB from "./config/db.js";
-import authRoutes from "./routes/auth.js";
-import globalErrorHandler from "./middleware/errorHandler.js";
+import connectDB from "./src/config/db.js";
+import authRoutes from "./src/routes/auth.js";
+import habitRoutes from "./src/routes/habit.routes.js";
+import globalErrorHandler from "./src/middleware/errorHandler.js";
 
 dotenv.config();
 const app = express();
@@ -41,6 +42,7 @@ app.get("/", (req, res) => {
 
 
 app.use("/api/v1/auth", authRoutes);
+app.use("/api/habits", habitRoutes);
 
 
 
