@@ -15,7 +15,7 @@ const allowedOrigins = (process.env.CLIENT_URL || "")
 .map((s) => s.trim())
 .filter(Boolean);
 
-const corsOprtions = {
+const corsOptions = {
   origin(origin, cb) {
     if (!origin) return cb(null, true);
     
@@ -32,8 +32,8 @@ const corsOprtions = {
   allowedHeaders: ["Content-type", "Authorization"],
 };
 
-app.use(cors(corsOprtions));
-app.options("*", cors(corsOprtions));
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(express.json({ limit: "1mb" }));
 
 app.get("/", (req, res) => {

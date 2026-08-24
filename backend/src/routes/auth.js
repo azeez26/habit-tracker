@@ -6,12 +6,15 @@ import {
     updateProfile
 } from '../controllers/authController.js';
 import { protect } from '../middleware/auth.js';
+import { validateRequest } from '../middleware/validate.js';
+import { registerSchema, loginSchema } from '../validations/auth.schema.js';
+import { loginLimiter } from '../middleware/rateLimiter.js';
 
 const router = express.Router();
 
 
-router.post('/register', register);
-router.post('/login', login);
+router.post('/register', validateRequest(registerSchema), register);
+router.post('/login', loginLimiter, validateRequest(loginSchema), login);
 router.get('/me', protect, me);
 router.put('/update', protect, updateProfile);
 

@@ -1,8 +1,8 @@
 import Habit from '../models/Habit.model.js';
 
-async function updateHabit(habitId, updates) {
-  const oldHabit = await Habit.findById(habitId);
-  if (!oldHabit) throw new Error('Habit not found');
+async function updateHabit(habitId, userId, updates) {
+  const oldHabit = await Habit.findOne({ _id: habitId, user_id: userId, is_active: true });
+  if (!oldHabit) return null;
 
   oldHabit.is_active = false;
   oldHabit.ended_at = new Date();
@@ -28,13 +28,13 @@ async function updateHabit(habitId, updates) {
   return newHabit;
 }
 
-async function softDeleteHabit(habitId) {
-  const habit = await Habit.findByIdAndUpdate(
-    habitId,
+async function softDeleteHabit(habitId, userId) {
+  const habit = await Habit.findOneAndUpdate(
+    { _id: habitId, user_id: userId, is_active: true },
     { is_active: false, ended_at: new Date() },
     { new: true }
   );
-  if (!habit) throw new Error('Habit not found');
+  if (!habit) return null;
 
   return habit;
 }

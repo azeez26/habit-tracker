@@ -1,6 +1,6 @@
 import Habit from '../models/Habit.model.js';
 import HabitLog from '../models/HabitLog.model.js';
-import { updateHabit } from '../Services/habit.service.js';
+import { updateHabit, softDeleteHabit } from '../Services/habit.service.js';
 import { parseISO, startOfDay, isBefore } from 'date-fns';
 import catchAsync from '../utils/catchAsync.js';
 import AppError from '../utils/appError.js';
@@ -30,12 +30,26 @@ export const editHabit = catchAsync(async (req, res, next) => {
     return next(new AppError('Please provide habit id', 400));
   }
 
-  const clonedHabit = await updateHabit(id, req.body);
+  const clonedHabit = await updateHabit(id, req.user.id, req.body);
   if (!clonedHabit) {
     return next(new AppError('Habit not found', 404));
   }
 
   res.status(200).json({ success: true, data: clonedHabit });
+});
+
+export const deleteHabit = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+  if (!id) {
+    return next(new AppError('Please provide habit id', 400));
+  }
+
+  const habit = await softDeleteHabit(id, req.user.id);
+  if (!habit) {
+    return next(new AppError('Habit not found', 404));
+  }
+
+  res.status(200).json({ success: true, data: habit });
 });
 
 export const getHabitsByDay = catchAsync(async (req, res, next) => {
