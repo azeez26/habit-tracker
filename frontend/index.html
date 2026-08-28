@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>متتبع العادات الذكي | Habit Tracker</title>
+  <meta name="description" content="تطبيق متتبع عادات احترافي ومتصل بالباك إند لمتابعة الأهداف اليومية والاستمرارية.">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Ambient background glow -->
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+  <div class="ambient-glow glow-3"></div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Main Container -->
+  <div class="app-layout">
+    
+    <!-- Top Navbar -->
+    <header class="top-nav">
+      <div class="nav-left">
+        <div class="logo">
+          <div class="logo-icon">
+            <i class="fa-solid fa-fire-flame-curved"></i>
+          </div>
+          <div class="logo-text">
+            <h2>Habit Pulse</h2>
+            <span>متتبع العادات الذكي</span>
+          </div>
+        </div>
+
+        <div class="server-status" id="serverStatusBadge" title="حالة الاتصال بالباك إند">
+          <span class="status-dot"></span>
+          <span class="status-text" id="serverStatusText">جارِ فحص السيرفر...</span>
+        </div>
+      </div>
+
+      <div class="nav-right">
+        <!-- Motivation Display -->
+        <div class="motivation-pill" id="motivationPill">
+          <i class="fa-solid fa-sparkles"></i>
+          <span id="motivationText">"الاستمرارية تصنع المعجزات"</span>
+        </div>
+
+        <!-- User Profile Area -->
+        <div class="user-action-area" id="userActionArea">
+          <!-- Populated by JS: either login button or user pill -->
+          <button class="btn btn-outline" id="openAuthModalBtn">
+            <i class="fa-solid fa-right-to-bracket"></i> تسجيل الدخول
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- App Content Body -->
+    <main class="main-content">
+      
+      <!-- Date Strip Bar -->
+      <section class="date-strip-section">
+        <div class="strip-header">
+          <div class="current-date-info">
+            <h1 id="selectedDateTitle">اليوم</h1>
+            <p id="selectedDateSubtitle">الأربعاء، 19 أغسطس</p>
+          </div>
+          <div class="strip-controls">
+            <button class="btn-icon" id="prevDaysBtn" title="الأيام السابقة"><i class="fa-solid fa-chevron-right"></i></button>
+            <button class="btn btn-sm btn-ghost" id="todayBtn">اليوم</button>
+            <button class="btn-icon" id="nextDaysBtn" title="الأيام التالية"><i class="fa-solid fa-chevron-left"></i></button>
+          </div>
+        </div>
+
+        <div class="calendar-strip" id="calendarStrip">
+          <!-- Calendar day buttons dynamically populated by JS -->
+        </div>
+      </section>
+
+      <!-- Dashboard Stats Summary -->
+      <section class="stats-overview">
+        <div class="stat-card">
+          <div class="stat-icon icon-emerald">
+            <i class="fa-solid fa-circle-check"></i>
+          </div>
+          <div class="stat-data">
+            <span class="stat-value" id="statCompleted">0/0</span>
+            <span class="stat-label">المكتمل اليوم</span>
+          </div>
+          <div class="stat-progress-bar">
+            <div class="progress-fill" id="statProgressBar" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon icon-amber">
+            <i class="fa-solid fa-fire"></i>
+          </div>
+          <div class="stat-data">
+            <span class="stat-value" id="statBestStreak">0 أيام</span>
+            <span class="stat-label">أفضل تتابع (Streak)</span>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon icon-indigo">
+            <i class="fa-solid fa-list-check"></i>
+          </div>
+          <div class="stat-data">
+            <span class="stat-value" id="statActiveHabits">0</span>
+            <span class="stat-label">العادات المجدولة</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Habits Section -->
+      <section class="habits-section">
+        <div class="section-toolbar">
+          <div class="filters">
+            <button class="filter-btn active" data-filter="all">الكل (<span id="countAll">0</span>)</button>
+            <button class="filter-btn" data-filter="pending">قيد الانتظار (<span id="countPending">0</span>)</button>
+            <button class="filter-btn" data-filter="done">مكتملة (<span id="countDone">0</span>)</button>
+            <button class="filter-btn" data-filter="skipped">تم التخطي (<span id="countSkipped">0</span>)</button>
+          </div>
+
+          <button class="btn btn-primary shadow-glow" id="addNewHabitBtn">
+            <i class="fa-solid fa-plus"></i> إضافة عادة جديدة
+          </button>
+        </div>
+
+        <!-- Habits List / Grid -->
+        <div class="habits-grid" id="habitsGrid">
+          <!-- Dynamic habit cards or empty state -->
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- Auth Modal (Login / Register) -->
+  <div class="modal-overlay" id="authModal">
+    <div class="modal-card auth-modal-card">
+      <button class="modal-close-btn" id="closeAuthModalBtn">&times;</button>
+      
+      <div class="auth-tabs">
+        <button class="auth-tab-btn active" id="tabLoginBtn">تسجيل الدخول</button>
+        <button class="auth-tab-btn" id="tabRegisterBtn">إنشاء حساب جديد</button>
+      </div>
+
+      <!-- Login Form -->
+      <form id="loginForm" class="auth-form active">
+        <div class="form-group">
+          <label for="loginEmail"><i class="fa-solid fa-envelope"></i> البريد الإلكتروني</label>
+          <input type="email" id="loginEmail" placeholder="example@domain.com" required autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label for="loginPassword"><i class="fa-solid fa-lock"></i> كلمة المرور</label>
+          <input type="password" id="loginPassword" placeholder="••••••••" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block btn-lg" id="loginSubmitBtn">
+          <span>دخول</span>
+          <i class="fa-solid fa-arrow-left"></i>
+        </button>
+        <div class="auth-hint">
+          <span>الاتصال المباشر مع API: <code>/api/v1/auth/login</code></span>
+        </div>
+      </form>
+
+      <!-- Register Form -->
+      <form id="registerForm" class="auth-form">
+        <div class="form-group">
+          <label for="regName"><i class="fa-solid fa-user"></i> الاسم بالكامل</label>
+          <input type="text" id="regName" placeholder="مثال: أحمد محمد" required autocomplete="name">
+        </div>
+        <div class="form-group">
+          <label for="regEmail"><i class="fa-solid fa-envelope"></i> البريد الإلكتروني</label>
+          <input type="email" id="regEmail" placeholder="example@domain.com" required autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label for="regPassword"><i class="fa-solid fa-lock"></i> كلمة المرور (6 أحرف على الأقل)</label>
+          <input type="password" id="regPassword" placeholder="••••••••" minlength="6" required autocomplete="new-password">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block btn-lg" id="registerSubmitBtn">
+          <span>إنشاء الحساب</span>
+          <i class="fa-solid fa-user-plus"></i>
+        </button>
+        <div class="auth-hint">
+          <span>الاتصال المباشر مع API: <code>/api/v1/auth/register</code></span>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Create Habit Modal -->
+  <div class="modal-overlay" id="habitModal">
+    <div class="modal-card habit-modal-card">
+      <button class="modal-close-btn" id="closeHabitModalBtn">&times;</button>
+      
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-sparkle"></i> إضافة عادة جديدة</h3>
+        <p>حدد نوع الهدف وجدول التكرار حسب أيام الأسبوع (0 = السبت إلى 6 = الجمعة)</p>
+      </div>
+
+      <form id="habitForm">
+        <!-- Habit Name -->
+        <div class="form-group">
+          <label for="habitName">اسم العادة</label>
+          <input type="text" id="habitName" placeholder="مثال: قراءة القرآن، الرياضة، شرب الماء..." required>
+        </div>
+
+        <!-- Goal Type Selector -->
+        <div class="form-group">
+          <label>نوع الهدف (Goal Type)</label>
+          <div class="type-toggle-group">
+            <label class="type-radio">
+              <input type="radio" name="goal_type" value="count" checked id="typeCountRadio">
+              <div class="type-box">
+                <i class="fa-solid fa-hashtag"></i>
+                <div class="type-info">
+                  <strong>تكرار بعدد المرات (Count)</strong>
+                  <span>مثال: 5 صلوات، 8 أكواب ماء</span>
+                </div>
+              </div>
+            </label>
+
+            <label class="type-radio">
+              <input type="radio" name="goal_type" value="duration" id="typeDurationRadio">
+              <div class="type-box">
+                <i class="fa-solid fa-stopwatch"></i>
+                <div class="type-info">
+                  <strong>مدة زمنية (Duration)</strong>
+                  <span>مثال: 30 دقيقة قراءة أو رياضة</span>
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Goal Target Input (Count or Duration) -->
+        <div class="form-group" id="countTargetGroup">
+          <label for="goalCountTarget">العدد المستهدف باليوم (Target Count)</label>
+          <div class="input-with-suffix">
+            <input type="number" id="goalCountTarget" min="1" max="1000" value="1">
+            <span class="suffix">مرات</span>
+          </div>
+        </div>
+
+        <div class="form-group hidden" id="durationTargetGroup">
+          <label for="goalDurationMinutes">المدة المستهدفة (بالدقائق)</label>
+          <div class="input-with-suffix">
+            <input type="number" id="goalDurationMinutes" min="1" max="1440" value="30">
+            <span class="suffix">دقيقة</span>
+          </div>
+        </div>
+
+        <!-- Schedule Days (0: SAT, 1: SUN, 2: MON, 3: TUE, 4: WED, 5: THU, 6: FRI) -->
+        <div class="form-group">
+          <label>أيام التكرار بالأسبوع (Schedule Days)</label>
+          <div class="weekdays-picker" id="weekdaysPicker">
+            <button type="button" class="day-chip active" data-day="0">السبت</button>
+            <button type="button" class="day-chip active" data-day="1">الأحد</button>
+            <button type="button" class="day-chip active" data-day="2">الاثنين</button>
+            <button type="button" class="day-chip active" data-day="3">الثلاثاء</button>
+            <button type="button" class="day-chip active" data-day="4">الأربعاء</button>
+            <button type="button" class="day-chip active" data-day="5">الخميس</button>
+            <button type="button" class="day-chip active" data-day="6">الجمعة</button>
+          </div>
+        </div>
+
+        <!-- Time Setting -->
+        <div class="form-group">
+          <label for="defaultTime">وقت التنبيه / الموعد الافتراضي</label>
+          <input type="time" id="defaultTime" value="08:00">
+        </div>
+
+        <!-- Color & Icon Theme -->
+        <div class="form-row">
+          <div class="form-group">
+            <label>لون العادة</label>
+            <div class="color-picker" id="colorPicker">
+              <span class="color-dot active" data-color="#6366F1" style="background: #6366F1;"></span>
+              <span class="color-dot" data-color="#10B981" style="background: #10B981;"></span>
+              <span class="color-dot" data-color="#F59E0B" style="background: #F59E0B;"></span>
+              <span class="color-dot" data-color="#EC4899" style="background: #EC4899;"></span>
+              <span class="color-dot" data-color="#06B6D4" style="background: #06B6D4;"></span>
+              <span class="color-dot" data-color="#8B5CF6" style="background: #8B5CF6;"></span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>الأيقونة</label>
+            <div class="icon-picker" id="iconPicker">
+              <span class="icon-option active" data-icon="fa-book-open"><i class="fa-solid fa-book-open"></i></span>
+              <span class="icon-option" data-icon="fa-dumbbell"><i class="fa-solid fa-dumbbell"></i></span>
+              <span class="icon-option" data-icon="fa-person-praying"><i class="fa-solid fa-person-praying"></i></span>
+              <span class="icon-option" data-icon="fa-glass-water"><i class="fa-solid fa-glass-water"></i></span>
+              <span class="icon-option" data-icon="fa-laptop-code"><i class="fa-solid fa-laptop-code"></i></span>
+              <span class="icon-option" data-icon="fa-bed"><i class="fa-solid fa-bed"></i></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="cancelHabitBtn">إلغاء</button>
+          <button type="submit" class="btn btn-primary" id="saveHabitBtn">حفظ العادة</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Profile Settings Modal -->
+  <div class="modal-overlay" id="profileModal">
+    <div class="modal-card profile-modal-card">
+      <button class="modal-close-btn" id="closeProfileModalBtn">&times;</button>
+      
+      <div class="profile-header">
+        <div class="user-avatar-large" id="modalUserAvatar">A</div>
+        <div class="profile-title">
+          <h3 id="modalUserName">المستخدم</h3>
+          <span id="modalUserEmail">email@example.com</span>
+        </div>
+      </div>
+
+      <form id="profileForm">
+        <div class="form-group">
+          <label for="profileName"><i class="fa-solid fa-user-pen"></i> الاسم</label>
+          <input type="text" id="profileName" required>
+        </div>
+
+        <div class="form-group">
+          <label class="toggle-label" for="profileMotivation">
+            <span><i class="fa-solid fa-sparkles"></i> تفعيل رسائل التحفيز الصباحية (Morning Motivation)</span>
+            <input type="checkbox" id="profileMotivation" class="toggle-checkbox" checked>
+          </label>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-danger-ghost" id="logoutBtn">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i> تسجيل الخروج
+          </button>
+          <button type="submit" class="btn btn-primary" id="saveProfileBtn">حفظ التعديلات</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- JavaScript Scripts -->
+  <script src="js/api.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
