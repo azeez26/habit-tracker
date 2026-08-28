@@ -26,6 +26,19 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    timezone: {
+      type: String,
+      default: "Africa/Cairo",
+    },
+    language: {
+      type: String,
+      enum: ["ar", "en"],
+      default: "ar",
+    },
+    country: {
+      type: String,
+      default: "Egypt",
+    },
   },
   { timestamps: true },
 );
