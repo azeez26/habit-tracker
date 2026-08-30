@@ -15,3 +15,17 @@ export const updateHabitSchema = Joi.object({
   days: Joi.array().items(Joi.number().min(0).max(6)).optional(),
   time: Joi.string().allow(null).optional(),
 });
+
+export const logHabitSchema = Joi.object({
+  date: Joi.string()
+    .pattern(/^\d{4}-\d{2}-\d{2}$/)
+    .required()
+    .messages({ 'string.pattern.base': 'Date must be YYYY-MM-DD format' }),
+  status: Joi.string()
+    .valid('done', 'missed')
+    .required(),
+  progress_value: Joi.number()
+    .min(0)
+    .optional()
+    .messages({ 'number.min': 'Progress cannot be negative' })
+});

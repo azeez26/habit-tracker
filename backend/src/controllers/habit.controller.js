@@ -54,18 +54,23 @@ export const deleteHabit = catchAsync(async (req, res, next) => {
 
 export const getHabitsByDay = catchAsync(async (req, res, next) => {
   const { date } = req.params; // 'YYYY-MM-DD'
+  const userId = req.user._id;
+  const timezone = req.user.timezone;
   
   if (!date) {
     return next(new AppError('Please provide a date', 400));
   }
 
-  const reqDateObj = parseISO(date);
-  const dayOfWeek = getLocalDayOfWeek(date);
+  // Get day of week for user's timezone
+  const dayOfWeek = getLocalDayOfWeek(date, timezone);
   
+  // Calculate next day boundary
+  const reqDateObj = new Date(date + 'T00:00:00Z');
   const nextDayObj = new Date(reqDateObj.getTime() + 24 * 60 * 60 * 1000);
 
+  // Get all habits scheduled for this day
   const habits = await Habit.find({
-    user_id: req.user.id,
+    user_id: userId,
     days: { $in: [dayOfWeek] },
     created_at: { $lt: nextDayObj },
     $or: [
@@ -74,10 +79,12 @@ export const getHabitsByDay = catchAsync(async (req, res, next) => {
     ]
   });
   
+  // Get logs for this date
   const habitIds = habits.map(h => h._id);
   const logs = await HabitLog.find({
     habit_id: { $in: habitIds },
     date: date,
+    user_id: userId
   });
   
   const logMap = logs.reduce((acc, log) => {
@@ -85,9 +92,8 @@ export const getHabitsByDay = catchAsync(async (req, res, next) => {
     return acc;
   }, {});
   
-  const today = startOfDay(new Date());
-  const reqDateStart = startOfDay(reqDateObj);
-  const isPast = isBefore(reqDateStart, today);
+  // Determine status
+  const isPast = isDateInPast(date, timezone);
   
   const mappedHabits = habits.map(habit => {
     const log = logMap[habit._id.toString()];
@@ -105,9 +111,14 @@ export const getHabitsByDay = catchAsync(async (req, res, next) => {
       ...habit.toObject(),
       status,
       progress_value: log ? log.progress_value : 0,
-      log_id: log ? log._id : null
+      log_id: log ? log._id : null,
+      stats: habit.stats // Include cached stats
     };
   });
   
-  res.status(200).json({ success: true, count: mappedHabits.length, data: mappedHabits });
+  res.status(200).json({ 
+    success: true, 
+    count: mappedHabits.length, 
+    data: mappedHabits 
+  });
 });

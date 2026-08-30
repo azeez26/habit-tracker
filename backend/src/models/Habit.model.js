@@ -1,10 +1,10 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const habitSchema = new mongoose.Schema(
   {
     user_id: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
       required: true,
       index: true,
     },
@@ -15,7 +15,7 @@ const habitSchema = new mongoose.Schema(
     },
     goal_type: {
       type: String,
-      enum: ['duration', 'count'],
+      enum: ["duration", "count"],
       required: true,
     },
     goal_target: {
@@ -41,20 +41,47 @@ const habitSchema = new mongoose.Schema(
     },
     parent_habit_id: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Habit',
+      ref: "Habit",
       default: null,
     },
     root_habit_id: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Habit',
+      ref: "Habit",
       default: null,
+    },
+
+    stats: {
+      type: {
+        current_streak: {
+          type: Number,
+          default: 0,
+        },
+        best_streak: {
+          type: Number,
+          default: 0,
+        },
+        total_completions: {
+          type: Number,
+          default: 0,
+        },
+        last_completed: {
+          type: String, // "YYYY-MM-DD"
+          default: null,
+        },
+      },
+      default: {
+        current_streak: 0,
+        best_streak: 0,
+        total_completions: 0,
+        last_completed: null,
+      },
     },
   },
   {
-    timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
-  }
+    timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
+  },
 );
 
-const Habit = mongoose.model('Habit', habitSchema);
+const Habit = mongoose.model("Habit", habitSchema);
 
 export default Habit;
