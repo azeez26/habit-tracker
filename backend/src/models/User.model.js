@@ -1,6 +1,10 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
+const avatar = name && name.length > 0 
+  ? name[0].toUpperCase() 
+  : '👤';
+
 const userSchema = new mongoose.Schema(
   {
     name: {
@@ -19,9 +23,7 @@ const userSchema = new mongoose.Schema(
       required: true,
       minlength: 6,
     },
-    avatar: {
-      type: String,
-    },
+    avatar,
     morningMotivation: {
       type: Boolean,
       default: true,
