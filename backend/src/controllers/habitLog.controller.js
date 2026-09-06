@@ -2,6 +2,7 @@ import HabitLog from '../models/HabitLog.model.js';
 import Habit from '../models/Habit.model.js';
 import catchAsync from '../utils/catchAsync.js';
 import AppError from '../utils/appError.js';
+import { recalculateStreaks } from '../Services/habit.service.js';
 import { getTodayInTimezone } from '../utils/dateUtils.js';
 
 /**

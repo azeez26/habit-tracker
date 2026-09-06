@@ -54,6 +54,15 @@ userSchema.pre("save", async function (next) {
   next();
 });
 
+userSchema.pre('save', function(next) {
+  if (!this.avatar && this.name) {
+    this.avatar = this.name[0].toUpperCase();
+  } else if (!this.avatar) {
+    this.avatar = '👤';
+  }
+  next();
+});
+
 // Method to compare entered password with hashed password "I can use it in controllers"
 userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);

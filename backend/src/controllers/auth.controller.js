@@ -44,7 +44,7 @@ export const login = catchAsync(async (req, res, next) => {
         const token = signToken(user._id);
         res.json({ 
             success: true,
-            user, 
+            user: user.toJSON(), 
             token,
             timezone: user.timezone 
         });
