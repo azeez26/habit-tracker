@@ -1,9 +1,11 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors"
-import connectDB from "./config/db.js";
-import authRoutes from "./routes/auth.js";
-import globalErrorHandler from "./middleware/errorHandler.js";
+import connectDB from "./src/config/db.js";
+import authRoutes from "./src/routes/auth.js";
+import habitRoutes from "./src/routes/habit.routes.js";
+import dashboardRoutes from './src/routes/dashboard.routes.js';
+import globalErrorHandler from "./src/middleware/errorHandler.js";
 
 dotenv.config();
 const app = express();
@@ -14,7 +16,7 @@ const allowedOrigins = (process.env.CLIENT_URL || "")
 .map((s) => s.trim())
 .filter(Boolean);
 
-const corsOprtions = {
+const corsOptions = {
   origin(origin, cb) {
     if (!origin) return cb(null, true);
     
@@ -31,8 +33,8 @@ const corsOprtions = {
   allowedHeaders: ["Content-type", "Authorization"],
 };
 
-app.use(cors(corsOprtions));
-app.options("*", cors(corsOprtions));
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(express.json({ limit: "1mb" }));
 
 app.get("/", (req, res) => {
@@ -41,6 +43,8 @@ app.get("/", (req, res) => {
 
 
 app.use("/api/v1/auth", authRoutes);
+app.use("/api/habits", habitRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 
 
