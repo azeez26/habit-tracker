@@ -128,3 +128,54 @@ export const getHabitsByDay = catchAsync(async (req, res, next) => {
     data: mappedHabits,
   });
 });
+
+
+/**
+ * GET /api/habits/:id/history
+ * Get all versions of a habit (parent chain)
+ */
+export const getHabitHistory = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+  const userId = req.user._id;
+  
+  // Get root habit
+  const rootHabit = await Habit.findOne({
+    _id: id,
+    user_id: userId
+  });
+  
+  if (!rootHabit) {
+    return next(new AppError('Habit not found', 404));
+  }
+  
+  const rootId = rootHabit.root_habit_id || rootHabit._id;
+  
+  // Get all versions in the chain
+  const history = await Habit.find({
+    $or: [
+      { root_habit_id: rootId },
+      { _id: rootId }
+    ],
+    user_id: userId
+  }).sort({ created_at: -1 });
+  
+  // Build chain structure
+  const chain = history.map(h => ({
+    id: h._id,
+    name: h.name,
+    goal_type: h.goal_type,
+    goal_target: h.goal_target,
+    days: h.days,
+    is_active: h.is_active,
+    created_at: h.created_at,
+    ended_at: h.ended_at,
+    stats: h.stats
+  }));
+  
+  res.status(200).json({
+    success: true,
+    root_id: rootId,
+    count: chain.length,
+    data: chain
+  });
+});

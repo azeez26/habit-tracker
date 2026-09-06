@@ -4,6 +4,7 @@ import cors from "cors"
 import connectDB from "./src/config/db.js";
 import authRoutes from "./src/routes/auth.js";
 import habitRoutes from "./src/routes/habit.routes.js";
+import dashboardRoutes from './src/routes/dashboard.routes.js';
 import globalErrorHandler from "./src/middleware/errorHandler.js";
 
 dotenv.config();
@@ -43,6 +44,7 @@ app.get("/", (req, res) => {
 
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/habits", habitRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 
 

@@ -4,7 +4,7 @@ import {
     login,
     me,
     updateProfile
-} from '../controllers/authController.js';
+} from '../controllers/auth.controller.js';
 import { protect } from '../middleware/auth.js';
 import { validateRequest } from '../middleware/validate.js';
 import { registerSchema, loginSchema, updateProfileSchema } from '../validations/auth.schema.js';
