@@ -135,4 +135,4 @@ export async function recalculateStreaks(habitId, userId) {
   }
 }
 
-export { updateHabit, softDeleteHabit };
+export { updateHabit, softDeleteHabit, recalculateStreaks };

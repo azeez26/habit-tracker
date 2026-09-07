@@ -24,7 +24,7 @@ const habitSchema = new mongoose.Schema(
     },
     days: {
       type: [Number],
-      required: true,
+      default:[0,1,2,3,4,5,6]
     },
     time: {
       type: String,
