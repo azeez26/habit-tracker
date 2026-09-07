@@ -5,7 +5,7 @@ import AppError from "../utils/appError.js";
 import {
   getTodayInTimezone,
   getLocalDayOfWeek,
-} from "../utils/timezoneUtils.js"; 
+} from "../utils/dateUtils.js"; 
 
 /**
  * GET /api/dashboard
