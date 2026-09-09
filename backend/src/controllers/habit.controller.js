@@ -1,15 +1,15 @@
-import Habit from '../models/Habit.model.js';
-import HabitLog from '../models/HabitLog.model.js';
-import { updateHabit, softDeleteHabit } from '../Services/habit.service.js';
-import { parseISO, startOfDay, isBefore } from 'date-fns';
-import catchAsync from '../utils/catchAsync.js';
-import AppError from '../utils/appError.js';
-import { getLocalDayOfWeek } from '../utils/dateUtils.js';
+import Habit from "../models/Habit.model.js";
+import HabitLog from "../models/HabitLog.model.js";
+import { updateHabit, softDeleteHabit } from "../Services/habit.service.js";
+import { parseISO, startOfDay, isBefore } from "date-fns";
+import catchAsync from "../utils/catchAsync.js";
+import AppError from "../utils/appError.js";
+import { getLocalDayOfWeek, isDateInPast } from "../utils/dateUtils.js";
 
 export const createHabit = catchAsync(async (req, res, next) => {
-  const { name, goal_type, goal_target, days, time } = req.body;
-  if (!name || !goal_type || goal_target === undefined || !days) {
-    return next(new AppError('Please provide all required fields', 400));
+  const { name, goal_type, goal_target, time } = req.body;
+  if (!name || !goal_type || goal_target === undefined) {
+    return next(new AppError("Please provide all required fields", 400));
   }
 
   const habit = new Habit({
@@ -17,7 +17,6 @@ export const createHabit = catchAsync(async (req, res, next) => {
     name,
     goal_type,
     goal_target,
-    days,
     time,
   });
   await habit.save();
@@ -27,12 +26,21 @@ export const createHabit = catchAsync(async (req, res, next) => {
 export const editHabit = catchAsync(async (req, res, next) => {
   const { id } = req.params;
   if (!id) {
-    return next(new AppError('Please provide habit id', 400));
+    return next(new AppError("Please provide habit id", 400));
+  }
+
+  const habit = await Habit.findOne({
+    _id: id,
+    user_id: req.user._id,
+  });
+
+  if (!habit) {
+    return next(new AppError("Habit not found", 404));
   }
 
   const clonedHabit = await updateHabit(id, req.user.id, req.body);
   if (!clonedHabit) {
-    return next(new AppError('Habit not found', 404));
+    return next(new AppError("Habit not found", 404));
   }
 
   res.status(200).json({ success: true, data: clonedHabit });
@@ -41,12 +49,12 @@ export const editHabit = catchAsync(async (req, res, next) => {
 export const deleteHabit = catchAsync(async (req, res, next) => {
   const { id } = req.params;
   if (!id) {
-    return next(new AppError('Please provide habit id', 400));
+    return next(new AppError("Please provide habit id", 400));
   }
 
   const habit = await softDeleteHabit(id, req.user.id);
   if (!habit) {
-    return next(new AppError('Habit not found', 404));
+    return next(new AppError("Habit not found", 404));
   }
 
   res.status(200).json({ success: true, data: habit });
@@ -54,60 +62,119 @@ export const deleteHabit = catchAsync(async (req, res, next) => {
 
 export const getHabitsByDay = catchAsync(async (req, res, next) => {
   const { date } = req.params; // 'YYYY-MM-DD'
-  
+  const userId = req.user._id;
+  const timezone = req.user.timezone;
+
   if (!date) {
-    return next(new AppError('Please provide a date', 400));
+    return next(new AppError("Please provide a date", 400));
   }
 
-  const reqDateObj = parseISO(date);
-  const dayOfWeek = getLocalDayOfWeek(date);
-  
+  // Get day of week for user's timezone
+  const dayOfWeek = getLocalDayOfWeek(date, timezone);
+
+  // Calculate next day boundary
+  const reqDateObj = new Date(date + "T00:00:00Z");
   const nextDayObj = new Date(reqDateObj.getTime() + 24 * 60 * 60 * 1000);
 
+  // Get all habits scheduled for this day
   const habits = await Habit.find({
-    user_id: req.user.id,
+    user_id: userId,
     days: { $in: [dayOfWeek] },
     created_at: { $lt: nextDayObj },
-    $or: [
-      { ended_at: null },
-      { ended_at: { $gt: reqDateObj } }
-    ]
+    $or: [{ ended_at: null }, { ended_at: { $gt: reqDateObj } }],
   });
-  
-  const habitIds = habits.map(h => h._id);
+
+  // Get logs for this date
+  const habitIds = habits.map((h) => h._id);
   const logs = await HabitLog.find({
     habit_id: { $in: habitIds },
     date: date,
+    user_id: userId,
   });
-  
+
   const logMap = logs.reduce((acc, log) => {
     acc[log.habit_id.toString()] = log;
     return acc;
   }, {});
-  
-  const today = startOfDay(new Date());
-  const reqDateStart = startOfDay(reqDateObj);
-  const isPast = isBefore(reqDateStart, today);
-  
-  const mappedHabits = habits.map(habit => {
+
+  // Determine status
+  const isPast = isDateInPast(date, timezone);
+
+  const mappedHabits = habits.map((habit) => {
     const log = logMap[habit._id.toString()];
-    let status = 'pending';
-    
-    if (log && log.status === 'done') {
-      status = 'done';
-    } else if (log && log.status === 'missed') {
-      status = 'missed';
+    let status = "pending";
+
+    if (log && log.status === "done") {
+      status = "done";
+    } else if (log && log.status === "missed") {
+      status = "missed";
     } else if (!log && isPast) {
-      status = 'missed';
+      status = "missed";
     }
-    
+
     return {
       ...habit.toObject(),
       status,
       progress_value: log ? log.progress_value : 0,
-      log_id: log ? log._id : null
+      log_id: log ? log._id : null,
+      stats: habit.stats, // Include cached stats
     };
   });
+
+  res.status(200).json({
+    success: true,
+    count: mappedHabits.length,
+    data: mappedHabits,
+  });
+});
+
+
+/**
+ * GET /api/habits/:id/history
+ * Get all versions of a habit (parent chain)
+ */
+export const getHabitHistory = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+  const userId = req.user._id;
   
-  res.status(200).json({ success: true, count: mappedHabits.length, data: mappedHabits });
+  // Get root habit
+  const rootHabit = await Habit.findOne({
+    _id: id,
+    user_id: userId
+  });
+  
+  if (!rootHabit) {
+    return next(new AppError('Habit not found', 404));
+  }
+  
+  const rootId = rootHabit.root_habit_id || rootHabit._id;
+  
+  // Get all versions in the chain
+  const history = await Habit.find({
+    $or: [
+      { root_habit_id: rootId },
+      { _id: rootId }
+    ],
+    user_id: userId
+  }).sort({ created_at: -1 });
+  
+  // Build chain structure
+  const chain = history.map(h => ({
+    id: h._id,
+    name: h.name,
+    goal_type: h.goal_type,
+    goal_target: h.goal_target,
+    days: h.days,
+    is_active: h.is_active,
+    created_at: h.created_at,
+    ended_at: h.ended_at,
+    stats: h.stats
+  }));
+  
+  res.status(200).json({
+    success: true,
+    root_id: rootId,
+    count: chain.length,
+    data: chain
+  });
 });

@@ -22,7 +22,6 @@ export const register = catchAsync(async (req, res, next) => {
         name, 
         email, 
         password, 
-        avatar: name[0].toUpperCase(),
         timezone: timezone || 'Africa/Cairo',
         language: language || 'ar'
     });
@@ -31,7 +30,7 @@ export const register = catchAsync(async (req, res, next) => {
 
     res.status(201).json({ 
         success: true,
-        user, 
+        user: user.toJSON(), 
         token,
         timezone: user.timezone 
     });
@@ -45,7 +44,7 @@ export const login = catchAsync(async (req, res, next) => {
         const token = signToken(user._id);
         res.json({ 
             success: true,
-            user, 
+            user: user.toJSON(), 
             token,
             timezone: user.timezone 
         });
@@ -57,8 +56,7 @@ export const login = catchAsync(async (req, res, next) => {
 export const me = catchAsync(async (req, res, next) => {
     res.json({
         success: true,
-        user: req.user,
-        timezone: req.user.timezone
+        data: req.user.toJSON()
     });
 });
 

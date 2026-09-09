@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
+
 const userSchema = new mongoose.Schema(
   {
     name: {
@@ -19,7 +20,7 @@ const userSchema = new mongoose.Schema(
       required: true,
       minlength: 6,
     },
-    avatar: {
+    avatar:{
       type: String,
     },
     morningMotivation: {
@@ -49,6 +50,15 @@ userSchema.pre("save", async function (next) {
   }
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
+  next();
+});
+
+userSchema.pre('save', function(next) {
+  if (!this.avatar && this.name) {
+    this.avatar = this.name[0].toUpperCase();
+  } else if (!this.avatar) {
+    this.avatar = '👤';
+  }
   next();
 });
 
