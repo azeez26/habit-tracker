@@ -2,15 +2,17 @@ import Habit from "../models/Habit.model.js";
 import HabitLog from "../models/HabitLog.model.js";
 import catchAsync from "../utils/catchAsync.js";
 import AppError from "../utils/appError.js";
+import { getTodayInTimezone, getLocalDayOfWeek } from "../utils/dateUtils.js";
+
 import {
-  getTodayInTimezone,
-  getLocalDayOfWeek,
-} from "../utils/dateUtils.js"; 
+  markMissedOccurrences,
+  recalculateStreaks,
+} from "../Services/habit.service.js";
 
 /**
  * GET /api/dashboard
  * Returns overview stats for today
- * 
+ *
  * Improvements:
  * maxBestStreak: أطول سلسلة متصلة (مش مجموع وهمي)
  * totalCompletions: يحسب إجمالي المرات فعلاً
@@ -27,6 +29,12 @@ export const getDashboardStats = catchAsync(async (req, res, next) => {
     is_active: true,
     $or: [{ ended_at: null }, { ended_at: { $gt: new Date() } }],
   });
+
+  for (const habit of allHabits) {
+    await markMissedOccurrences(habit, userId, req.user.timezone);
+
+    await recalculateStreaks(habit._id, userId, req.user.timezone);
+  }
 
   // Get today's habits scheduled for this day
   const todayHabits = allHabits.filter((h) => h.days.includes(dayOfWeek));
@@ -49,9 +57,10 @@ export const getDashboardStats = catchAsync(async (req, res, next) => {
 
   // IMPROVEMENT 1: maxBestStreak instead of sum
   // يرجع أطول سلسلة متصلة (أكبر إنجاز)
-  const maxBestStreak = allHabits.length > 0
-    ? Math.max(...allHabits.map((h) => h.stats?.best_streak || 0))
-    : 0;
+  const maxBestStreak =
+    allHabits.length > 0
+      ? Math.max(...allHabits.map((h) => h.stats?.best_streak || 0))
+      : 0;
 
   const totalCompletions = allHabits.reduce(
     (sum, h) => sum + (h.stats?.total_completions || 0),
@@ -75,7 +84,7 @@ export const getDashboardStats = catchAsync(async (req, res, next) => {
       },
       overall: {
         total_habits: allHabits.length,
-        max_best_streak: maxBestStreak, 
+        max_best_streak: maxBestStreak,
         total_completions: totalCompletions,
       },
       habits: todayHabits.map((habit) => ({
@@ -94,7 +103,7 @@ export const getDashboardStats = catchAsync(async (req, res, next) => {
 /**
  * GET /api/dashboard/month?month=2026-08
  * Returns monthly overview grouped by habit
- * 
+ *
  * Improvement:
  * Using date range ($gte, $lte) instead of regex for better indexing performance
  */
@@ -111,7 +120,7 @@ export const getMonthStats = catchAsync(async (req, res, next) => {
   const [year, monthNum] = month.split("-");
   const firstDay = `${year}-${monthNum}-01`;
   const lastDay = `${year}-${monthNum}-31`; // MongoDB يتعامل معها تمام
-  
+
   // Get all logs for the month using range query
   const monthLogs = await HabitLog.find({
     user_id: userId,
@@ -174,7 +183,7 @@ export const getMonthStats = catchAsync(async (req, res, next) => {
 /**
  * GET /api/dashboard/month/daily?month=2026-08
  * Returns monthly overview grouped by day (for heatmap/calendar view)
- * 
+ *
  * IMPROVEMENT 3: New endpoint for daily aggregation
  * مفيدة لـ Heatmap أو Calendar UI
  */

@@ -28,3 +28,13 @@ export const isDateInPast = (dateString, timezone) => {
   const today = toZonedTime(new Date(), timezone);
   return startOfDay(zonedDate) < startOfDay(today);
 };
+
+
+export const isValidTimezone = (timezone) => {
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: timezone });
+    return true;
+  } catch {
+    return false;
+  }
+};

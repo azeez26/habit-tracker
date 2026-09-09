@@ -7,7 +7,7 @@ import AppError from "../utils/appError.js";
 import { getLocalDayOfWeek, isDateInPast } from "../utils/dateUtils.js";
 
 export const createHabit = catchAsync(async (req, res, next) => {
-  const { name, goal_type, goal_target, time } = req.body;
+  const { name, goal_type, goal_target, time,days } = req.body;
   if (!name || !goal_type || goal_target === undefined) {
     return next(new AppError("Please provide all required fields", 400));
   }
@@ -18,6 +18,7 @@ export const createHabit = catchAsync(async (req, res, next) => {
     goal_type,
     goal_target,
     time,
+    days
   });
   await habit.save();
   res.status(201).json({ success: true, data: habit });

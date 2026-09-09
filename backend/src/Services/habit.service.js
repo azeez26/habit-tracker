@@ -1,6 +1,55 @@
 import Habit from "../models/Habit.model.js";
-import habitLog from "../models/HabitLog.model.js";
-import { parseISO, addDays, isBefore } from "date-fns";
+import HabitLog from "../models/HabitLog.model.js";
+import { parseISO, addDays, format } from "date-fns";
+import { toZonedTime } from "date-fns-tz";
+import { getLocalDayOfWeek } from "../utils/dateUtils.js";
+
+async function markMissedOccurrences(habit, userId, timezone) {
+  const now = new Date();
+
+  // Convert habit creation date to user's local date
+  const localCreatedDate = format(
+    toZonedTime(habit.created_at, timezone),
+    "yyyy-MM-dd"
+  );
+
+  // Yesterday in user's timezone
+  const localYesterday = format(
+    toZonedTime(addDays(now, -1), timezone),
+    "yyyy-MM-dd"
+  );
+
+  let currentDate = parseISO(localCreatedDate);
+  const endDate = parseISO(localYesterday);
+
+  while (currentDate <= endDate) {
+    const dateString = format(currentDate, "yyyy-MM-dd");
+
+    const dayOfWeek = getLocalDayOfWeek(dateString, timezone);
+
+    // Ignore days that are not scheduled
+    if (habit.days.includes(dayOfWeek)) {
+      await HabitLog.updateOne(
+        {
+          habit_id: habit._id,
+          user_id: userId,
+          date: dateString,
+          timezone,
+        },
+        {
+          $setOnInsert: {
+            status: "missed",
+            progress_value: 0,
+            logged_at: new Date(),
+          },
+        },
+        { upsert: true }
+      );
+    }
+
+    currentDate = addDays(currentDate, 1);
+  }
+}
 
 async function updateHabit(habitId, userId, updates) {
   const oldHabit = await Habit.findOne({
@@ -8,6 +57,7 @@ async function updateHabit(habitId, userId, updates) {
     user_id: userId,
     is_active: true,
   });
+
   if (!oldHabit) return null;
 
   oldHabit.is_active = false;
@@ -38,14 +88,15 @@ async function softDeleteHabit(habitId, userId) {
   const habit = await Habit.findOneAndUpdate(
     { _id: habitId, user_id: userId, is_active: true },
     { is_active: false, ended_at: new Date() },
-    { new: true },
+    { new: true }
   );
+
   if (!habit) return null;
 
   return habit;
 }
 
-export async function recalculateStreaks(habitId, userId) {
+export async function recalculateStreaks(habitId, userId, timezone) {
   try {
     const habit = await Habit.findOne({
       _id: habitId,
@@ -57,70 +108,39 @@ export async function recalculateStreaks(habitId, userId) {
       return;
     }
 
-    // Get all logs for this habit, sorted by date DESC
+    // Make sure all past scheduled occurrences have a log
+    await markMissedOccurrences(habit, userId, timezone);
+
     const logs = await HabitLog.find({
       habit_id: habitId,
       user_id: userId,
+      timezone,
     })
-      .sort({ date: -1 })
+      .sort({ date: 1 })
       .lean();
 
-    if (logs.length === 0) {
-      // No logs yet - reset stats
-      habit.stats = {
-        current_streak: 0,
-        best_streak: 0,
-        total_completions: 0,
-        last_completed: null,
-      };
-      await habit.save();
-      return;
-    }
-
-    // Get unique dates from logs (deduplicate if multiple timezones)
-    const dateLogsMap = {};
-    logs.forEach((log) => {
-      if (!dateLogsMap[log.date]) {
-        dateLogsMap[log.date] = log;
-      }
-    });
-
-    const sortedDates = Object.keys(dateLogsMap).sort().reverse();
-    const sortedLogs = sortedDates.map((d) => dateLogsMap[d]);
-
-    // Calculate streaks
     let currentStreak = 0;
     let bestStreak = 0;
     let tempStreak = 0;
     let totalCompletions = 0;
     let lastCompletedDate = null;
 
-    for (let i = 0; i < sortedLogs.length; i++) {
-      const log = sortedLogs[i];
-
+    for (const log of logs) {
       if (log.status === "done") {
         tempStreak++;
         totalCompletions++;
-        if (!lastCompletedDate) {
-          lastCompletedDate = log.date;
-        }
-      } else if (log.status === "missed") {
-        if (i === 0) {
-          // Current day is missed, streak is 0
-          currentStreak = 0;
-        } else if (i > 0 && sortedLogs[i - 1].status === "done") {
-          // Streak ended
-          bestStreak = Math.max(bestStreak, tempStreak);
-          tempStreak = 0;
-        }
+
+        lastCompletedDate = log.date;
+
+        bestStreak = Math.max(bestStreak, tempStreak);
+      } else {
+        tempStreak = 0;
       }
     }
 
-    // Last streak
-    currentStreak = sortedLogs[0].status === "done" ? tempStreak : 0;
-    bestStreak = Math.max(bestStreak, tempStreak);
+    // Current streak is the streak at the end of the logs
+    currentStreak = tempStreak;
 
-    // Update habit with new stats
     habit.stats = {
       current_streak: currentStreak,
       best_streak: bestStreak,
@@ -129,10 +149,11 @@ export async function recalculateStreaks(habitId, userId) {
     };
 
     await habit.save();
+
     console.log(`Streaks updated for habit ${habitId}:`, habit.stats);
   } catch (error) {
     console.error(`Error calculating streaks for habit ${habitId}:`, error);
   }
 }
 
-export { updateHabit, softDeleteHabit, recalculateStreaks };
+export { updateHabit, softDeleteHabit, markMissedOccurrences };
