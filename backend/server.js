@@ -43,8 +43,8 @@ app.get("/", (req, res) => {
 
 
 app.use("/api/v1/auth", authRoutes);
-app.use("/api/habits", habitRoutes);
-app.use('/api/dashboard', dashboardRoutes);
+app.use("/api/v1/habits", habitRoutes);
+app.use('/api/v1/dashboard', dashboardRoutes);
 
 
 
